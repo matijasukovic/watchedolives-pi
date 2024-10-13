@@ -5,31 +5,15 @@ from time import sleep
 
 #global values, calculated manually
 height = 1300
-laserOriginPoint = (720, 1000)
+laserOriginPoint = (792, 1005)
 
 # Laser setup
 from gpiozero import OutputDevice
 laser = OutputDevice(17)
 
-# Servo setup
-from adafruit_servokit import ServoKit
-
-kit = ServoKit(channels=16)
-
-pan = kit.servo[0]
-tilt = kit.servo[1]
-
-pan.set_pulse_width_range(540, 2640)
-tilt.set_pulse_width_range(540, 2640)
-
-def min(servo):
-    servo.angle = 0
-
-def mid(servo):
-    servo.angle = 90
-
-def max(servo):
-    servo.angle = 180
+# Laser head setup
+from classes.laser_head import LaserHead
+head = LaserHead()
 
 def moveServos(laserPoint, targetPoint):
     movePanServo(laserPoint, targetPoint)
@@ -52,7 +36,7 @@ def movePanServo(laserPoint, targetPoint):
     # print('pan angle in degrees ', angleDegrees)
 
     if angleDegrees >= 0 and angleDegrees <= 180:
-        pan.angle = angleDegrees
+        head.pan.setAngle(angleDegrees)
 
 def moveTiltServo(laserPoint, targetPoint, invert=False):
     global height
@@ -70,11 +54,9 @@ def moveTiltServo(laserPoint, targetPoint, invert=False):
 
     if invert:
         angleDegrees = 180 - angleDegrees
-
-    # print('tilt angle in degrees: ', angleDegrees)
     
     if angleDegrees >= 0 and angleDegrees <= 180:
-        tilt.angle = angleDegrees
+        head.tilt.setAngle(angleDegrees)
 
 
 # Camera setup
@@ -161,17 +143,17 @@ def adjustHeight(laserPoint, targetPoint):
     distance_origin_laser = math.sqrt((laserOriginPoint[0] - laserPoint[0])**2 + (laserOriginPoint[1] - laserPoint[1])**2)
     distance_origin_target = math.sqrt((laserOriginPoint[0] - targetPoint[0])**2 + (laserOriginPoint[1] - targetPoint[1])**2)
 
-    theta = abs(90 - tilt.angle) # calculate angle between laser origin height and laser beam
+    theta = abs(90 - head.tilt.getAngle()) # calculate angle between laser origin height and laser beam
     theta_radians = math.radians(theta)
 
     delta_H = distance_laser_target / math.tan(theta_radians)
 
-    if (distance_origin_laser > distance_origin_target):
+    if (distance_origin_laser >= distance_origin_target):
         height = height + delta_H
-        print('Reduced H by ', delta_H)
+        print('Increased H by ', delta_H)
     else:
         height = height - delta_H
-        print('Increased H by ', delta_H)
+        print('Reduced H by ', delta_H)
 
     print('new height: ', height)
     
@@ -182,8 +164,8 @@ def main():
     global height
     global laserOriginPoint
 
-    mid(pan)
-    mid(tilt)
+    head.pan.mid()
+    head.tilt.mid()
 
     preview_config = camera.create_preview_configuration(
 		main={"size": (1920, 1920)}
@@ -193,6 +175,7 @@ def main():
     camera.start()
 
     while True:
+        sleep(0.3)
         img = capture()
 
         laserPoint = findLaserPoint(img)
@@ -204,23 +187,23 @@ def main():
         if targetPoint:
             cv2.circle(img, targetPoint, radius=10, thickness=2, color=(0, 255, 0))
 
+
         if targetPoint:
-            laser.on()
 
             movePanServo(laserOriginPoint, targetPoint)
 
-            invertTiltAngle = targetPoint[1] >= img.shape[0] / 2
+            invertTiltAngle = targetPoint[1] <= laserOriginPoint[1]
             moveTiltServo(laserOriginPoint, targetPoint, invertTiltAngle)
+
+            laser.on()
 
             if laserPoint and distanceBetweenPointsExceedsThreshold(targetPoint, laserPoint):
                 print('Sufficient error detected.')
                 adjustHeight(laserPoint, targetPoint)
-                sleep(2)
-                
-                moveTiltServo(laserOriginPoint, targetPoint)
-                sleep(10)
 
+                moveTiltServo(laserOriginPoint, targetPoint, invertTiltAngle)
 
+                laser.on()
         else:
             laser.off()
 
@@ -234,8 +217,8 @@ def main():
             print(height)
 
         elif cv2.waitKey(1) & 0xFF == ord('q'):
-            mid(pan)
-            mid(tilt)
+            head.pan.mid()
+            head.tilt.mid()
             laser.off()
 
             break
