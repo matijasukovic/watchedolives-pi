@@ -157,16 +157,6 @@ def findLaserPoint(img):
     print('with max area: {0}'.format(candidateWithMaxArea))
 
     return candidateWithMaxArea['coordinates']
-    # points = cv2.findNonZero(mask)
-
-    # try:
-    #     meanValues = np.mean(points, axis=0)
-    #     laserPoint = (int(meanValues[0][0]), int(meanValues[0][1]))
-    #     return laserPoint
-
-    # except Exception as e:
-    #     print('Laser point not found.')
-    #     return None
 
 def distanceBetweenPointsExceedsThreshold(targetPoint, laserPoint):
     threshold_for_error = 50
@@ -203,7 +193,6 @@ def adjustHeight(laserPoint, targetPoint):
     if not minHeight < height < maxHeight:
         height = defaultHeight
         print('Reset to default height.')
-        sleep(100)
 
     print('new height: ', height)
     
