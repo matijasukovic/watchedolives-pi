@@ -4,7 +4,8 @@ import math
 from time import sleep
 
 #global values, calculated manually
-height = 1300
+defaultHeight = 1300
+height = defaultHeight
 laserOriginPoint = (792, 1005)
 
 # Laser setup
@@ -115,17 +116,57 @@ def findLaserPoint(img):
 
     mask = cv2.inRange(img_hsv, lower_range, upper_range)
 
-    points = cv2.findNonZero(mask)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    try:
-        meanValues = np.mean(points, axis=0)
-        laserPoint = (int(meanValues[0][0]), int(meanValues[0][1]))
-
-    except Exception as e:
+    if not contours:
         print('Laser point not found.')
         return None
+    
+    print('contours length: {0}'.format(len(contours)))
 
-    return laserPoint
+    laserPointCandidates = []
+
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+
+        aspect_ratio = w / float(h)
+        area = w * h
+
+        print(aspect_ratio)
+        print(area)
+
+        minAspectRatio = 0.8
+        maxAspectRatio = 1.5
+        maxArea = 2000
+
+        if minAspectRatio <= aspect_ratio <= maxAspectRatio and area <= maxArea:
+            M = cv2.moments(contour)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+                laserPointCandidates.append({
+                    "coordinates": (cx, cy),
+                    "area": area
+                })
+
+    if len(laserPointCandidates) == 0: 
+        print('Laser point not detected.')
+        return None
+
+    candidateWithMaxArea = max(laserPointCandidates, key=lambda x: x['area'])
+    print('with max area: {0}'.format(candidateWithMaxArea))
+
+    return candidateWithMaxArea['coordinates']
+    # points = cv2.findNonZero(mask)
+
+    # try:
+    #     meanValues = np.mean(points, axis=0)
+    #     laserPoint = (int(meanValues[0][0]), int(meanValues[0][1]))
+    #     return laserPoint
+
+    # except Exception as e:
+    #     print('Laser point not found.')
+    #     return None
 
 def distanceBetweenPointsExceedsThreshold(targetPoint, laserPoint):
     threshold_for_error = 50
@@ -135,7 +176,11 @@ def distanceBetweenPointsExceedsThreshold(targetPoint, laserPoint):
 
 def adjustHeight(laserPoint, targetPoint):
     global height
+    global defaultHeight
     global laserOriginPoint
+
+    maxHeight = 10000
+    minHeight = 100
 
     print('previous height: ', height)
 
@@ -154,6 +199,11 @@ def adjustHeight(laserPoint, targetPoint):
     else:
         height = height - delta_H
         print('Reduced H by ', delta_H)
+
+    if not minHeight < height < maxHeight:
+        height = defaultHeight
+        print('Reset to default height.')
+        sleep(100)
 
     print('new height: ', height)
     
@@ -175,7 +225,6 @@ def main():
     camera.start()
 
     while True:
-        sleep(0.3)
         img = capture()
 
         laserPoint = findLaserPoint(img)
@@ -187,13 +236,14 @@ def main():
         if targetPoint:
             cv2.circle(img, targetPoint, radius=10, thickness=2, color=(0, 255, 0))
 
-
         if targetPoint:
 
             movePanServo(laserOriginPoint, targetPoint)
 
             invertTiltAngle = targetPoint[1] <= laserOriginPoint[1]
             moveTiltServo(laserOriginPoint, targetPoint, invertTiltAngle)
+
+            sleep(0.1)
 
             laser.on()
 
@@ -202,8 +252,7 @@ def main():
                 adjustHeight(laserPoint, targetPoint)
 
                 moveTiltServo(laserOriginPoint, targetPoint, invertTiltAngle)
-
-                laser.on()
+                sleep(0.1)
         else:
             laser.off()
 
@@ -212,11 +261,7 @@ def main():
         preview_img = cv2.resize(img, (800, 800))
         cv2.imshow('Preview', preview_img)
 
-        if cv2.waitKey(1) & 0xFF == ord('w'):
-            height -= 10
-            print(height)
-
-        elif cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             head.pan.mid()
             head.tilt.mid()
             laser.off()
