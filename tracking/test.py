@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import math
 from time import sleep
+from classes.detector import Detector
 
 #global values, calculated manually
 defaultHeight = 1300
@@ -11,6 +12,9 @@ laserOriginPoint = (792, 1005)
 # Laser setup
 from gpiozero import OutputDevice
 laser = OutputDevice(17)
+
+# Detector setup
+detector = Detector() 
 
 # Laser head setup
 from classes.laser_head import LaserHead
@@ -34,8 +38,6 @@ def movePanServo(laserPoint, targetPoint):
     if angleDegrees < 0:
         angleDegrees += 180
 
-    # print('pan angle in degrees ', angleDegrees)
-
     if angleDegrees >= 0 and angleDegrees <= 180:
         head.pan.setAngle(angleDegrees)
 
@@ -55,8 +57,12 @@ def moveTiltServo(laserPoint, targetPoint, invert=False):
 
     if invert:
         angleDegrees = 180 - angleDegrees
-    
-    if angleDegrees >= 0 and angleDegrees <= 180:
+
+    if angleDegrees < 45:
+        head.tilt.setAngle(45)
+    elif angleDegrees > 135:
+        head.tilt.setAngle(135)
+    else:
         head.tilt.setAngle(angleDegrees)
 
 
@@ -81,7 +87,7 @@ def captureAndSave():
 	index = index + 1
 
 
-def findTargetPoint(img):
+def findArucoMarker(img):
     imgGrayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # New aruco API, for opencv version >4.8.0
@@ -121,8 +127,6 @@ def findLaserPoint(img):
     if not contours:
         print('Laser point not found.')
         return None
-    
-    print('contours length: {0}'.format(len(contours)))
 
     laserPointCandidates = []
 
@@ -131,9 +135,6 @@ def findLaserPoint(img):
 
         aspect_ratio = w / float(h)
         area = w * h
-
-        print(aspect_ratio)
-        print(area)
 
         minAspectRatio = 0.8
         maxAspectRatio = 1.5
@@ -154,7 +155,6 @@ def findLaserPoint(img):
         return None
 
     candidateWithMaxArea = max(laserPointCandidates, key=lambda x: x['area'])
-    print('with max area: {0}'.format(candidateWithMaxArea))
 
     return candidateWithMaxArea['coordinates']
 
@@ -216,14 +216,7 @@ def main():
     while True:
         img = capture()
 
-        laserPoint = findLaserPoint(img)
-        targetPoint = findTargetPoint(img)
-
-        if laserPoint:
-            cv2.circle(img, laserPoint, radius=10, thickness=2, color=(255, 0, 0))
-
-        if targetPoint:
-            cv2.circle(img, targetPoint, radius=10, thickness=2, color=(0, 255, 0))
+        targetPoint = detector.detect(img)
 
         if targetPoint:
 
@@ -232,16 +225,25 @@ def main():
             invertTiltAngle = targetPoint[1] <= laserOriginPoint[1]
             moveTiltServo(laserOriginPoint, targetPoint, invertTiltAngle)
 
-            sleep(0.1)
+            # This sleep should be the amount of time it takes for the servos to move to the position
+            sleep(0.2)
 
             laser.on()
+            img = capture()
+
+            laserPoint = findLaserPoint(img)
+            if laserPoint:
+                cv2.circle(img, laserPoint, radius=10, thickness=2, color=(255, 0, 0))
+
+            if targetPoint:
+                cv2.circle(img, targetPoint, radius=10, thickness=2, color=(0, 255, 0))
 
             if laserPoint and distanceBetweenPointsExceedsThreshold(targetPoint, laserPoint):
                 print('Sufficient error detected.')
                 adjustHeight(laserPoint, targetPoint)
 
                 moveTiltServo(laserOriginPoint, targetPoint, invertTiltAngle)
-                sleep(0.1)
+                sleep(0.2)
         else:
             laser.off()
 
