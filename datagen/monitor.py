@@ -1,23 +1,16 @@
-from picamera2 import Picamera2, Preview
-from signal import pause
-from libcamera import controls
-from time import sleep
+from classes.camera import Camera
+import cv2
 
-camera = Picamera2()
+camera = Camera()
 
 def main():
-    preview_config = camera.create_preview_configuration(
-        main={"size": (1920, 1920)},
-        lores={"size": (480, 480),},
-        display="lores"
-    )
-    camera.configure(preview_config)
+    while True:
+        img = camera.capture()
+        cv2.namedWindow('Preview', cv2.WINDOW_NORMAL)
+        cv2.imshow('Preview', img)
 
-    camera.set_controls({"AfMode": controls.AfModeEnum.Continuous})
-
-    camera.start_preview(Preview.QTGL)
-    camera.start()
-    pause()
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
 if __name__ == '__main__':
     main()

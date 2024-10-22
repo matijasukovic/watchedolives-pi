@@ -63,23 +63,9 @@ def moveTiltServo(laserPoint, targetPoint, invert=False):
 
 # Camera setup
 
-from picamera2 import Picamera2, Preview
-from libcamera import controls
-camera = Picamera2()
+from classes.camera import Camera
 
-def capture():
-    img = camera.capture_array()
-    return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
-index = 1
-def captureAndSave():
-	global index
-
-	save_path = 'test_' + str(index) + '.png'
-	camera.capture_file(save_path)
-	print('saved as: ' ,save_path)
-
-	index = index + 1
+camera = Camera()
 
 
 def findArucoMarker(img):
@@ -201,15 +187,10 @@ def main():
     head.pan.mid()
     head.tilt.mid()
 
-    preview_config = camera.create_preview_configuration(
-		main={"size": (1920, 1920)}
-	)
-    camera.configure(preview_config)
-    camera.set_controls({"AfMode": controls.AfModeEnum.Continuous})
-    camera.start()
-
     while True:
-        img = capture()
+        img = camera.capture()
+        cv2.namedWindow('Preview', cv2.WINDOW_NORMAL)
+        cv2.imshow('Preview', img)
 
         targetPoint = detector.detect(img)
 
@@ -225,7 +206,7 @@ def main():
             # This sleep should be the amount of time it takes for the servos to move to the position
             sleep(0.75)
 
-            img = capture()
+            img = camera.capture()
 
             laserPoint = findLaserPoint(img)
             if laserPoint:
@@ -233,6 +214,9 @@ def main():
 
             if targetPoint:
                 cv2.circle(img, targetPoint, radius=10, thickness=2, color=(0, 255, 0))
+
+            cv2.namedWindow('Preview', cv2.WINDOW_NORMAL)
+            cv2.imshow('Preview', img)
 
             if laserPoint and distanceBetweenPointsExceedsThreshold(targetPoint, laserPoint):
                 print('Sufficient error detected.')
@@ -242,10 +226,6 @@ def main():
         else:
             laser.off()
 
-        
-
-        preview_img = cv2.resize(img, (800, 800))
-        cv2.imshow('Preview', preview_img)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             head.pan.mid()

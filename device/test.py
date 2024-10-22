@@ -18,21 +18,9 @@ laser = OutputDevice(17)
 
 # Camera setup
 
-camera = Picamera2()
+from classes.camera import Camera
 
-def capture():
-	return camera.capture_array()
-
-index = 0
-def captureAndSave():
-	global index
-
-	save_path = 'test_' + str(index) + '.png'
-	camera.capture_file(save_path)
-	print('saved as: ' ,save_path)
-
-	index = index + 1
-
+camera = Camera()
 
 def on_press(key):
 	if key == keyboard.Key.esc:
@@ -49,7 +37,7 @@ def on_press(key):
 	if k in ['left', 'right', 'up', 'down', 'enter', '0']:  # keys of interest
 		controlDevice(k)
 	elif k in ['space']:
-		captureAndSave()
+		camera.captureAndSave()
 
 
 def controlDevice(button):
@@ -79,17 +67,7 @@ def main():
 	head.pan.mid()
 	head.tilt.mid()
 
-	preview_config = camera.create_preview_configuration(
-		main={"size": (1920, 1920)},
-		lores={"size": (1920, 1920)},
-		display="lores"
-	)
-	camera.configure(preview_config)
-
-	camera.set_controls({"AfMode": controls.AfModeEnum.Continuous})
-
-	camera.start_preview(Preview.QTGL)
-	camera.start()
+	camera.startPreview()
 
 	listener = keyboard.Listener(on_press=on_press)
 	listener.start()  # start to listen on a separate thread
