@@ -39,7 +39,7 @@ def movePanServo(laserPoint, targetPoint):
         angleDegrees += 180
 
     if angleDegrees >= 0 and angleDegrees <= 180:
-        head.pan.setAngle(angleDegrees)
+        head.setPanAngle(angleDegrees)
 
 def moveTiltServo(laserPoint, targetPoint, invert=False):
     global height
@@ -58,12 +58,7 @@ def moveTiltServo(laserPoint, targetPoint, invert=False):
     if invert:
         angleDegrees = 180 - angleDegrees
 
-    if angleDegrees < 45:
-        head.tilt.setAngle(45)
-    elif angleDegrees > 135:
-        head.tilt.setAngle(135)
-    else:
-        head.tilt.setAngle(angleDegrees)
+    head.setTiltAngle(angleDegrees)
 
 
 # Camera setup
@@ -224,11 +219,12 @@ def main():
 
             invertTiltAngle = targetPoint[1] <= laserOriginPoint[1]
             moveTiltServo(laserOriginPoint, targetPoint, invertTiltAngle)
+            
+            laser.on()
 
             # This sleep should be the amount of time it takes for the servos to move to the position
-            sleep(0.2)
+            sleep(0.75)
 
-            laser.on()
             img = capture()
 
             laserPoint = findLaserPoint(img)
@@ -243,7 +239,6 @@ def main():
                 adjustHeight(laserPoint, targetPoint)
 
                 moveTiltServo(laserOriginPoint, targetPoint, invertTiltAngle)
-                sleep(0.2)
         else:
             laser.off()
 
