@@ -14,13 +14,21 @@ class LaserHead:
         self.tilt.mid()
 
     def setPanAngle(self, angle):
-        if 0 <= angle <= 180:
+        if angle < 0:
+            self.pan.setAngle(0)
+        elif angle > 180:
+            self.pan.setAngle(180)
+        else:
             self.pan.setAngle(angle)
 
     def setTiltAngle(self, angle):
         min, max = self.getTiltAngleLimits()
 
-        if min <= angle <= max:
+        if angle < min:
+            self.tilt.setAngle(min)
+        elif angle > max:
+            self.tilt.setAngle(max)
+        else:
             self.tilt.setAngle(angle)
 
 
