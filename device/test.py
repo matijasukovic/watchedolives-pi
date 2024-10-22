@@ -1,11 +1,10 @@
 from picamera2 import Picamera2, Preview
 from libcamera import controls
 
-from adafruit_servokit import ServoKit
-
 from gpiozero import OutputDevice
 
 from pynput import keyboard
+
 
 # Laser head setup
 
@@ -57,16 +56,16 @@ def controlDevice(button):
 	increment = 0.5
 
 	if button == "up" and head.tilt.getAngle() + increment < 180:
-		head.tilt.setAngle(head.tilt.getAngle() + increment)
+		head.setTiltAngle(head.tilt.getAngle() + increment)
 		print('tilt up', head.tilt.getAngle())
 	elif button == "down" and head.tilt.getAngle() - increment > 0:
-		head.tilt.setAngle(head.tilt.getAngle() - increment)
+		head.setTiltAngle(head.tilt.getAngle() - increment)
 		print('tilt down ', head.tilt.getAngle())
 	elif button == "left" and head.pan.getAngle() + increment < 180:
-		head.pan.setAngle(head.pan.getAngle() + increment)
+		head.setPanAngle(head.pan.getAngle() + increment)
 		print('pan left ', head.pan.getAngle())
 	elif button == "right" and head.pan.getAngle() - increment > 0:
-		head.pan.setAngle(head.pan.getAngle() - increment)
+		head.setPanAngle(head.pan.getAngle() - increment)
 		print('pan right ', head.pan.getAngle())
 	elif button == "enter":
 		laser.toggle()
