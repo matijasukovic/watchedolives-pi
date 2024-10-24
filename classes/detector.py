@@ -12,7 +12,7 @@ class Detector:
         self.detection_model = AutoDetectionModel.from_pretrained(
             model_type='yolov8',
             model_path=r"/home/matijasukovic_pi5/projects/watchedolives_pi/models/tuned/n_tuned/weights/best_ncnn_model",
-            confidence_threshold=0.4,
+            confidence_threshold=0.7,
             device="cpu"
         )
 
