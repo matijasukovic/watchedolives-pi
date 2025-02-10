@@ -1,3 +1,4 @@
+# Note: cd into camera_calibration direcory before running script, or change path to the pictures.
 import matplotlib
 matplotlib.use('Agg')
 
@@ -26,8 +27,7 @@ def Calibrate():
     object_points[:,:2] = np.mgrid[0:10, 0:7].T.reshape(-1,2)
     object_points = object_points*square_size
     
-    fnames = glob.glob('/home/matijasukovic/projects/WatchedOlives/camera_calibration/pictures/'+'*.'+'png')
-    
+    fnames = glob.glob('./pictures/'+'*.'+'png')
     
     for fname in fnames:
         img = cv2.imread(fname)
