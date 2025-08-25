@@ -1,5 +1,6 @@
 venv/
 datasets/
 models/
+camera_calibration/pictures
 benchmarks.log
 *.pyc
